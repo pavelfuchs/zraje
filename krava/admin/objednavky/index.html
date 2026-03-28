@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Objednávky — Zraje</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+  body {
+    background: var(--kzr-white);
+    color: var(--kzr-brand);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .page {
+    max-width: 50em;
+    margin: 0 auto;
+    padding: 1em;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: .75em;
+    margin-bottom: 1.5em;
+  }
+
+  .header a {
+    text-decoration: none;
+    font-size: 1.5em;
+  }
+
+  .header h1 {
+    font-family: var(--font-germaniaone);
+    font-size: 1.3em;
+    font-weight: 400;
+  }
+
+  .stats {
+    display: flex;
+    gap: 1em;
+    margin-bottom: 1.5em;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: var(--kzr-grey);
+    border-radius: .5em;
+    padding: .75em 1em;
+    flex: 1;
+    min-width: 8em;
+  }
+
+  .stat__value {
+    font-size: 1.5em;
+    font-weight: 700;
+    display: block;
+  }
+
+  .stat__label {
+    font-size: .75em;
+    opacity: .6;
+  }
+
+  .search {
+    display: flex;
+    align-items: center;
+    background: var(--kzr-grey);
+    border-radius: .5em;
+    padding: .5em 1em;
+    margin-bottom: 1em;
+  }
+
+  .search input {
+    flex: 1;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    outline: none;
+    font-size: 1em;
+  }
+
+  .search input::placeholder { opacity: .4; }
+
+  .filters {
+    display: flex;
+    gap: .5em;
+    margin-bottom: 1.25em;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: .4em .8em;
+    border: 1.5px solid var(--kzr-brand);
+    border-radius: 2em;
+    background: none;
+    color: var(--kzr-brand);
+    font: inherit;
+    font-size: .8em;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .filter-btn.active {
+    background: var(--kzr-brand);
+    color: var(--kzr-white);
+  }
+
+  .orders {
+    display: flex;
+    flex-direction: column;
+    gap: .5em;
+  }
+
+  .order {
+    background: var(--kzr-white);
+    border-radius: .5em;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .order-summary {
+    display: flex;
+    align-items: center;
+    padding: .75em 1em;
+    gap: .75em;
+  }
+
+  .order-status {
+    width: .6em;
+    height: .6em;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .order-status.paid { background: #22c55e; }
+  .order-status.unpaid { background: #ef4444; }
+  .order-status.unknown { background: #a3a3a3; }
+
+  .order-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .order-name {
+    font-weight: 600;
+    font-size: .95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .order-meta {
+    font-size: .7em;
+    opacity: .5;
+    margin-top: .15em;
+  }
+
+  .order-amount {
+    font-weight: 700;
+    font-size: 1em;
+    white-space: nowrap;
+  }
+
+  .order-items {
+    font-size: .7em;
+    opacity: .5;
+    text-align: right;
+  }
+
+  .order-detail {
+    display: none;
+    padding: 0 1em 1em;
+    border-top: 1px dashed var(--kzr-brand);
+    margin-top: 0;
+  }
+
+  .order.is-open .order-detail {
+    display: block;
+  }
+
+  .order-detail table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85em;
+    margin: .75em 0;
+  }
+
+  .order-detail td {
+    padding: .3em 0;
+    vertical-align: top;
+  }
+
+  .order-detail td:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .order-contact {
+    font-size: .8em;
+    margin-top: .5em;
+    line-height: 1.6;
+  }
+
+  .order-contact a {
+    text-decoration: underline;
+  }
+
+  .stripe-badge {
+    display: inline-block;
+    font-size: .7em;
+    font-weight: 600;
+    padding: .2em .5em;
+    border-radius: .3em;
+    margin-top: .5em;
+  }
+
+  .stripe-badge.succeeded { background: #dcfce7; color: #15803d; }
+  .stripe-badge.requires_payment_method,
+  .stripe-badge.canceled { background: #fee2e2; color: #b91c1c; }
+  .stripe-badge.processing { background: #fef9c3; color: #a16207; }
+  .stripe-badge.unknown { background: #f3f4f6; color: #6b7280; }
+
+  .category-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 1.5px solid var(--kzr-brand);
+    border-radius: 2em;
+    color: var(--kzr-brand);
+    font: inherit;
+    font-size: .8em;
+    font-weight: 600;
+    padding: .4em .8em;
+    cursor: pointer;
+    margin-left: auto;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ff0707'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .6em center;
+    padding-right: 2em;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 3em;
+    opacity: .4;
+    font-size: 1.2em;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <a href="../">←</a>
+      <h1>objednávky</h1>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="stat">
+        <span class="stat__value" id="stat-total">—</span>
+        <span class="stat__label">objednávek</span>
+      </div>
+      <div class="stat">
+        <span class="stat__value" id="stat-paid">—</span>
+        <span class="stat__label">zaplacených</span>
+      </div>
+      <div class="stat">
+        <span class="stat__value" id="stat-revenue">—</span>
+        <span class="stat__label">tržby</span>
+      </div>
+    </div>
+
+    <div class="search">
+      <input type="text" id="search" placeholder="Hledat jméno, email, produkt...">
+    </div>
+
+    <div class="filters" style="align-items:center">
+      <button class="filter-btn active" data-filter="new">Nové</button>
+      <button class="filter-btn" data-filter="fulfilled">Doručené</button>
+      <button class="filter-btn" data-filter="all">Vše</button>
+      <button class="filter-btn" data-filter="unpaid">Nezaplacené</button>
+      <select class="category-select" id="category-select">
+        <option value="all">Vše</option>
+        <option value="krava">Kráva</option>
+        <option value="ocet">Ocet</option>
+        <option value="chleba">Chléb</option>
+      </select>
+    </div>
+
+    <div class="orders" id="orders">
+      <div class="loading">Načítám objednávky...</div>
+    </div>
+  </div>
+
+  <script>
+    let allOrders = [];
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function formatTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function orderTotal(order) {
+      return (order.lines || []).reduce((sum, l) => sum + (l.czkPrice || 0) * (l.quantity || 1), 0);
+    }
+
+    function renderOrders(orders) {
+      const container = document.getElementById('orders');
+      if (orders.length === 0) {
+        container.innerHTML = '<div class="loading">Žádné objednávky</div>';
+        return;
+      }
+
+      container.innerHTML = orders.map(order => {
+        const total = orderTotal(order);
+        const isPaid = !!order.paidAt;
+        const statusClass = isPaid ? 'paid' : 'unpaid';
+        const itemCount = (order.lines || []).reduce((s, l) => s + (l.quantity || 1), 0);
+        const lineRows = (order.lines || []).map(l =>
+          '<tr><td>' + (l.productName || l.productHandle) + ' ×' + (l.quantity || 1) + '</td><td>' + (l.czkPrice * (l.quantity || 1)) + ',–</td></tr>'
+        ).join('');
+        const delivery = (order.lines || []).find(l => l.deliverySlotName);
+        const deliveryText = delivery ? delivery.deliverySlotName : '';
+        // Guess drop from delivery slot or order date
+        const dropNames = [...new Set((order.lines || []).map(l => l.deliverySlotName).filter(Boolean))];
+        const dropHint = dropNames.length ? dropNames[0] : '';
+
+        return `
+          <div class="order" data-id="${order.id}" data-paid="${isPaid}" data-fulfilled="${!!order.fulfilledAt}" onclick="this.classList.toggle('is-open')">
+            <div class="order-summary">
+              <span class="order-status ${statusClass}"></span>
+              <div class="order-info">
+                <div class="order-name">${order.fullName || order.email || '—'}</div>
+                <div class="order-meta">#${order.number || '?'} · ${formatDate(order.createdAt)}${deliveryText ? ' · ' + deliveryText : ''}</div>
+              </div>
+              <div>
+                <div class="order-amount">${total},–</div>
+                <div class="order-items">${itemCount} ks</div>
+              </div>
+            </div>
+            <div class="order-detail">
+              <table>${lineRows}</table>
+              <div class="order-contact">
+                <a href="mailto:${order.email}">${order.email || '—'}</a><br>
+                <a href="tel:${order.tel}">${order.tel || '—'}</a><br>
+                ${order.shippingMethod || ''}<br>
+                ${order.note ? '<em>' + order.note + '</em>' : ''}
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:.75em">
+                <div class="stripe-badge ${isPaid ? 'succeeded' : 'unknown'}" id="stripe-${order.id}">
+                  ${isPaid ? '✓ Zaplaceno ' + formatDate(order.paidAt) + ' ' + formatTime(order.paidAt) : 'Nezaplaceno'}
+                </div>
+                <div class="stripe-badge ${order.preparedAt ? 'succeeded' : 'unknown'}">
+                  ${order.preparedAt ? '✓ Připraveno ' + formatDate(order.preparedAt) + ' ' + formatTime(order.preparedAt) : '○ Nepřipraveno'}
+                </div>
+                <div class="stripe-badge ${order.deliveredAt ? 'succeeded' : 'unknown'}">
+                  ${order.deliveredAt ? '✓ Doručeno ' + formatDate(order.deliveredAt) + ' ' + formatTime(order.deliveredAt) : '○ Nedoručeno'}
+                </div>
+              </div>
+              <div style="display:flex;gap:.5em;margin-top:.75em;flex-wrap:wrap">
+                ${!order.preparedAt ? '<button class="filter-btn" style="font-size:.75em" onclick="event.stopPropagation();setStatus(\'' + order.id + '\',\'preparedAt\')">Označit připraveno</button>' : ''}
+                ${!order.deliveredAt ? '<button class="filter-btn" style="font-size:.75em" onclick="event.stopPropagation();setStatus(\'' + order.id + '\',\'deliveredAt\')">Označit doručeno</button>' : ''}
+                ${order.stripePaymentIntentId ? '<button style="font-size:.7em;text-decoration:underline;background:none;border:none;color:inherit;cursor:pointer" onclick="event.stopPropagation();checkStripe(\'' + order.id + '\')">Ověřit Stripe</button>' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateStats(orders) {
+      const total = orders.length;
+      const paid = orders.filter(o => !!o.paidAt).length;
+      const revenue = orders.filter(o => !!o.paidAt).reduce((sum, o) => sum + orderTotal(o), 0);
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-paid').textContent = paid;
+      document.getElementById('stat-revenue').textContent = (revenue / 1000).toFixed(1) + 'k';
+    }
+
+    function filterAndRender() {
+      const query = document.getElementById('search').value.toLowerCase();
+      const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+      const activeCategory = document.getElementById('category-select').value;
+
+      let filtered = allOrders;
+
+      // Category filter — match against product handles/names
+      if (activeCategory !== 'all') {
+        filtered = filtered.filter(o => {
+          return (o.lines || []).some(l => {
+            var h = ((l.productHandle || '') + ' ' + (l.productName || '')).toLowerCase();
+            if (activeCategory === 'krava') return !h.includes('ocet') && !h.includes('chleb') && !h.includes('chléb');
+            if (activeCategory === 'ocet') return h.includes('ocet');
+            if (activeCategory === 'chleba') return h.includes('chleb') || h.includes('chléb');
+            return true;
+          });
+        });
+      }
+
+      if (query) {
+        filtered = filtered.filter(o => {
+          const haystack = [o.fullName, o.email, o.tel, ...(o.lines || []).map(l => l.productName || l.productHandle)].join(' ').toLowerCase();
+          return haystack.includes(query);
+        });
+      }
+
+      if (activeFilter === 'new') filtered = filtered.filter(o => !!o.paidAt && !o.fulfilledAt);
+      if (activeFilter === 'unpaid') filtered = filtered.filter(o => !o.paidAt);
+      if (activeFilter === 'fulfilled') filtered = filtered.filter(o => !!o.fulfilledAt);
+
+      renderOrders(filtered);
+    }
+
+    async function checkStripe(orderId) {
+      const badge = document.getElementById('stripe-' + orderId);
+      badge.textContent = 'Kontroluji...';
+      badge.className = 'stripe-badge unknown';
+      try {
+        const res = await fetch('/api/orders/' + orderId + '/stripe');
+        const data = await res.json();
+        badge.textContent = data.status === 'succeeded' ? '✓ Zaplaceno na Stripe' : 'Stripe: ' + data.status;
+        badge.className = 'stripe-badge ' + (data.status || 'unknown');
+      } catch (err) {
+        badge.textContent = 'Chyba při ověření';
+        badge.className = 'stripe-badge unknown';
+      }
+    }
+
+    // Init
+    fetch('/api/orders')
+      .then(r => r.json())
+      .then(orders => {
+        allOrders = orders;
+        updateStats(orders);
+        filterAndRender();
+      })
+      .catch(() => {
+        document.getElementById('orders').innerHTML = '<div class="loading">Chyba při načítání</div>';
+      });
+
+    async function setStatus(orderId, field) {
+      try {
+        await fetch('/api/orders/' + orderId + '/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ field: field })
+        });
+        // Update local data and re-render
+        var order = allOrders.find(o => o.id === orderId);
+        if (order) order[field] = new Date().toISOString();
+        filterAndRender();
+      } catch (err) {
+        alert('Chyba: ' + err.message);
+      }
+    }
+
+    document.getElementById('search').addEventListener('input', filterAndRender);
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterAndRender();
+      });
+    });
+
+    document.getElementById('category-select').addEventListener('change', filterAndRender);
+  </script>
+</body>
+</html>

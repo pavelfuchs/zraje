@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Zraje — Admin</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  body {
+    background: var(--kzr-white);
+    color: var(--kzr-brand);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .admin {
+    max-width: 28em;
+    margin: 0 auto;
+    padding: 1.5em 1em;
+  }
+
+  .admin-title {
+    font-family: var(--font-germaniaone);
+    font-size: 1.4em;
+    font-weight: 400;
+    text-align: center;
+    margin-bottom: 1.5em;
+  }
+
+  /* Product tiles */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7em, 1fr));
+    gap: .75em;
+    margin-bottom: 2em;
+  }
+
+  .tile {
+    aspect-ratio: 1;
+    border-radius: .75em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5em;
+    cursor: pointer;
+    transition: background .15s, box-shadow .15s;
+    text-decoration: none;
+    background: var(--kzr-grey);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    position: relative;
+  }
+
+  .tile:hover, .tile:active {
+    background: var(--kzr-light);
+    box-shadow: 0 0 0 2px var(--kzr-brand);
+  }
+
+  .tile__icon {
+    width: 2.5em;
+    height: auto;
+    color: var(--kzr-brand);
+  }
+
+  .tile__label {
+    font-size: .8em;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .tile__badge {
+    position: absolute;
+    top: .4em;
+    right: .4em;
+    font-size: .55em;
+    font-weight: 600;
+    background: var(--kzr-brand);
+    color: var(--kzr-white);
+    padding: .15em .45em;
+    border-radius: 1em;
+  }
+
+  .tile--add {
+    border: 2px dashed var(--kzr-brand);
+    background: transparent;
+    opacity: .5;
+  }
+
+  .tile--add:hover {
+    opacity: 1;
+    background: var(--kzr-light);
+  }
+
+  .tile--add .tile__icon {
+    font-size: 2em;
+    width: auto;
+  }
+
+  /* Section links */
+  .sections {
+    display: flex;
+    flex-direction: column;
+    gap: .75em;
+  }
+
+  .section-link {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    padding: 1.25em 1em;
+    border-radius: .5em;
+    background: var(--kzr-white);
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    text-decoration: none;
+    color: var(--kzr-brand);
+    font-weight: 600;
+    font-size: 1.1em;
+    transition: background .15s, box-shadow .15s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .section-link:hover, .section-link:active {
+    background: var(--kzr-light);
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  }
+
+  .section-link__icon {
+    font-size: 1.6em;
+    width: 1.6em;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* Past drops */
+  .past-toggle {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font: inherit;
+    font-size: .75em;
+    color: var(--kzr-brand);
+    opacity: .4;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: .5em;
+    margin-top: -.5em;
+    margin-bottom: 1em;
+  }
+
+  .past-toggle:hover { opacity: .7; }
+
+  .past-drops {
+    display: none;
+    margin-top: .5em;
+    margin-bottom: 1.5em;
+  }
+
+  .past-drops.is-open { display: grid; }
+  .past-drops .tile { opacity: .4; }
+  .past-drops .tile:hover { opacity: .7; }
+</style>
+</head>
+<body>
+  <div class="admin">
+    <h1 class="admin-title">zraje</h1>
+
+    <!-- Active tiles -->
+    <div class="tiles" id="active-tiles">
+      <!-- Filled from JS -->
+    </div>
+
+    <button class="past-toggle" id="past-toggle" style="display:none" onclick="document.getElementById('past-drops').classList.toggle('is-open'); this.textContent = document.getElementById('past-drops').classList.contains('is-open') ? 'Skrýt proběhlé ▲' : 'Proběhlé ▼'">Proběhlé ▼</button>
+
+    <div class="past-drops tiles" id="past-drops">
+      <!-- Past drops -->
+    </div>
+
+    <!-- Sections -->
+    <div class="sections">
+      <a class="section-link" href="bourani/">
+        <span class="section-link__icon">🔪</span>
+        <span>Bourání</span>
+      </a>
+      <a class="section-link" href="objednavky/" style="position:relative">
+        <span class="section-link__icon">📦</span>
+        <span>Objednávky</span>
+        <span id="orders-badge" style="display:none;position:absolute;top:.5em;right:.5em;background:var(--kzr-brand);color:var(--kzr-white);font-size:.6em;font-weight:700;padding:.2em .5em;border-radius:1em"></span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    var cowSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" fill="currentColor" class="tile__icon"><path d="M25.179 10.082a.91.91 0 0 1-.009-.262v-.321c.009-.1.013-.2.017-.305.05-.27.084-.524.101-.786l.051-.845.05-.397.052-.507c.008-.034.008-.068.008-.093s0-.068-.008-.093l-.051-.49c.05.228.101.456.127.684l.135.938.025.237.017.177v.27l-.008.238.05.912.026.38-.009.643-.034.431-.042.254c0 .05.009.11.009.16 0 .068-.009.144-.009.22v.025c0 .051.009.102.017.144.034.093.05.186.06.287.016.102.025.203.05.305.025.101.042.203.042.312l.009.212c0 .042.025.084.059.101a.35.35 0 0 0 .346.034c.085-.025.127-.101.127-.186v-.423a3.5 3.5 0 0 0-.059-1.031c.009-.042.017-.093.034-.143.008-.051.008-.102.008-.161 0-.042-.008-.085-.034-.11a.68.68 0 0 1-.11-.203 1.7 1.7 0 0 1-.1-.287.6.6 0 0 1-.035-.245c.009-.135.009-.27.009-.414 0-.178.017-.355.042-.533.026-.152.042-.313.042-.473V7.673l.017-1.352-.017-.6a3 3 0 0 0-.194-1.251 2.45 2.45 0 0 0-.473-.795 4.2 4.2 0 0 0-1.125-.845 5.9 5.9 0 0 0-.769-.262 2.3 2.3 0 0 0-.54-.085c-.127-.008-.288-.008-.618-.017a4.1 4.1 0 0 0-.743.06l-.837.118a28 28 0 0 1-1.209.101c-.71.034-1.487.102-2.273.178l-.87.084a4.5 4.5 0 0 1-.609.017A21 21 0 0 0 15.687 3a5.8 5.8 0 0 0-.845-.06 12 12 0 0 1-2.24-.16A17 17 0 0 0 10.16 2.594h-.076l-.625.017c-.22.017-.457.042-.693.068l-.676.059c-.296.025-.567.034-.837.025a5 5 0 0 1-.592-.042 3.5 3.5 0 0 1-.66-.118 5.3 5.3 0 0 1-1.064-.398L4.785 2.113l.067-.161c.026-.025.034-.06.034-.127-.017-.067-.05-.118-.118-.144a2.5 2.5 0 0 0-.44-.16 1 1 0 0 0-.27-.093.39.39 0 0 1-.237-.144L3.482.87c-.017-.017-.034-.025-.05-.034h-.026c-.025 0-.042.017-.059.043a.23.23 0 0 0-.008.076l.008.067.228.6h-.008a1 1 0 0 0-.626.237c-.025.026-.05.051-.084.068a.17.17 0 0 1-.144.017.36.36 0 0 1-.203-.135l-.372-.482c-.025-.025-.05-.042-.084-.042L1.8.47a.09.09 0 0 0-.076.042.23.23 0 0 0-.026.102l.009.067.337.703.161.296c.008.016.017.033.017.05a.08.08 0 0 1-.026.06 1.5 1.5 0 0 1-.203.228.44.44 0 0 1-.21.118.28.28 0 0 0-.195.194 1.5 1.5 0 0 0-.06.262.67.67 0 0 1-.177.372 1 1 0 0 0-.186.228c-.084.127-.169.254-.27.372a1.6 1.6 0 0 0-.186.305 1 1 0 0 1-.212.338l-.532.574A.65.65 0 0 0 0 5.957c0 .034 0 .06.008.085a1 1 0 0 0 .229.591 1 1 0 0 0 .583.355.4.4 0 0 0 .194-.05.7.7 0 0 1 .482-.076l.702.102c.068-.017.178-.05.28-.093a.35.35 0 0 1 .244-.008c.093.034.186.076.28.127.21.118.439.194.676.236l.617.085a.84.84 0 0 1 .278.067c.17.085.322.212.431.372.144.212.271.431.38.668l.491 .972c.085.211.17.397.262.592l.17.414a.54.54 0 0 0 .067.118c.236.321.558.558.93.676l.228.076-.972.888-.203.22a3 3 0 0 0-.338.54.57.57 0 0 0-.043.338c.026.127.077.246.136.355l.279.415.946.955.305.38.532.566.499.432.195.067c.076.195.202.372.355.508a.43.43 0 0 0 .439.168l.05-.017-.397-1.36c-.017-.051-.05-.094-.11-.102l-.363-.085c-.034-.016-.05-.05-.042-.076l.076-.228a.2.2 0 0 0-.093-.253 1 1 0 0 0-.448-.203 3 3 0 0 1-.305-.237 1.4 1.4 0 0 1-.338-.406l-.236-.422a1 1 0 0 1-.127-.38.55.55 0 0 1 .101-.39.87.87 0 0 1 .33-.278l.922-.423c.143-.05.27-.127.397-.211a1.7 1.7 0 0 1 .261-.17c.187-.117.33-.27.44-.464l.05-.093.364.761.135.194.864 1.319.32.566.372.761.06.178c.042.093.067.186.084.287l.051.338a.43.43 0 0 1-.127.313l-.313.372a.68.68 0 0 0-.498.558l-.009.059h1.446a.67.67 0 0 0 .118-.753l-.042-.076c-.009-.034.008-.059.033-.059h.17a.21.21 0 0 0 .177-.253l-.186-.753-.271-.963-.338-1.367-.177-.716-.093-.355a6 6 0 0 0-.431-1.2l-.076-.144.803-.016c.313-.017.643.008.964.084a7 7 0 0 0 1.521.161c.507 0 1.006-.051 1.496-.152l.904-.178c.186.152.39.287.609.389l.025.017-.118.667a.26.26 0 0 0 .499.085l.211-.558.313.068-.076.6c0 .05.008.101.034.144a.23.23 0 0 0 .211.11c.05 0 .101-.009.152-.017.068-.017.127-.068.135-.144l.119-.617.287.017c.017.11.025.228.025.397 0 .17-.017.33-.034.499a2 2 0 0 1-.101.405c-.118.27-.254.55-.406.812l-.287.507a1.8 1.8 0 0 1-.313.482l-.76.693-.398.329a1.85 1.85 0 0 0-.448.634l-.025.076a1.5 1.5 0 0 0-.642.584l-.034.076h1.437l.034-.009.414-.769a.064.064 0 0 1 .101-.025l.17.127a.6.6 0 0 0 .151-.094l.203-.236.583-.938c.06-.085.152-.187.262-.271l1.133-.846a.33.33 0 0 0 .076-.152l.304-1.293.245-.507.102-.101a3.5 3.5 0 0 0 .845 1.065c.135.143.253.296.346.473a5 5 0 0 1 .516 1.809c0 .102-.008.203-.026.304a.34.34 0 0 1-.075.178c-.043.05-.085.11-.119.169a.4.4 0 0 0-.051.312l-.33.322a.65.65 0 0 0-.143.456h1.437l.135-.228a.3.3 0 0 0 .034-.254.44.44 0 0 0-.068-.16l-.084-.271a.17.17 0 0 1 .118-.152l.16-.034a.23.23 0 0 0 .094-.27c-.042-.312-.102-.65-.17-.98l-.143-.972a.9.9 0 0 1 .008-.338l.177-1.192c.009-.05.009-.1.009-.295a.86.86 0 0 0-.144-.39l-.093-.185-.127-.355a2.4 2.4 0 0 1-.11-.583Z"/></svg>';
+
+    fetch('/api/drops')
+      .then(r => r.json())
+      .then(drops => {
+        // Sort by name, latest first
+        drops.sort((a, b) => b.name.localeCompare(a.name));
+
+        var activeTiles = document.getElementById('active-tiles');
+        var pastDrops = document.getElementById('past-drops');
+        var pastToggle = document.getElementById('past-toggle');
+
+        // Latest drop = first tile (active)
+        if (drops.length > 0) {
+          var latest = drops[0];
+          activeTiles.innerHTML =
+            '<a class="tile" href="bourani/?drop=' + latest.id + '">' +
+              cowSvg +
+              '<span class="tile__label">' + latest.name + '</span>' +
+              '<span class="tile__badge">aktivní</span>' +
+            '</a>' +
+            '<a class="tile" href="#">' +
+              '<span class="tile__icon" style="font-size:1.5em">🫙</span>' +
+              '<span class="tile__label">Ocet</span>' +
+            '</a>' +
+            '<a class="tile tile--add" onclick="alert(\'Přidat nový drop\'); return false;" href="#">' +
+              '<span class="tile__icon">+</span>' +
+              '<span class="tile__label">Přidat</span>' +
+            '</a>';
+        }
+
+        // Past drops
+        if (drops.length > 1) {
+          pastToggle.style.display = '';
+          pastDrops.innerHTML = drops.slice(1).map(drop =>
+            '<a class="tile" href="bourani/?drop=' + drop.id + '">' +
+              cowSvg +
+              '<span class="tile__label">' + drop.name + '</span>' +
+            '</a>'
+          ).join('');
+        }
+      });
+
+    // Load new orders count for badge
+    fetch('/api/orders/count/new')
+      .then(r => r.json())
+      .then(data => {
+        if (data.count > 0) {
+          var badge = document.getElementById('orders-badge');
+          badge.textContent = data.count;
+          badge.style.display = '';
+        }
+      });
+  </script>
+</body>
+</html>

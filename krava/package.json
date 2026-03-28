@@ -1,0 +1,13 @@
+{
+  "name": "krava-web",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "stripe": "^17.0.0",
+    "resend": "^6.9.4",
+    "@google-cloud/firestore": "^7.0.0"
+  }
+}

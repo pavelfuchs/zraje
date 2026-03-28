@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bourání — Zraje</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+  body { background: var(--kzr-white); color: var(--kzr-brand); min-height: 100vh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .page { max-width: 44em; margin: 0 auto; padding: 1em; padding-bottom: 5em; }
+  .header { display: flex; align-items: center; gap: .75em; margin-bottom: 1em; }
+  .header a { text-decoration: none; font-size: 1.5em; }
+  .header h1 { font-family: var(--font-germaniaone); font-size: 1.3em; font-weight: 400; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5em; margin-bottom: 1em; }
+  .card { background: var(--kzr-grey); border-radius: .5em; padding: .5em .6em; cursor: pointer; }
+  .card:active { background: var(--kzr-light); }
+  .card__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .1em; }
+  .card__label { font-size: .55em; opacity: .4; text-transform: uppercase; }
+  .card__val { font-size: 1em; font-weight: 700; }
+  .card__val--small { font-size: .75em; font-weight: 600; }
+  .card__val--green { color: #16a34a; }
+  .card__val--red { color: #dc2626; }
+
+  .qfilter { display: flex; gap: .35em; margin-bottom: .75em; flex-wrap: wrap; }
+  .qbtn { padding: .35em .7em; border: 1.5px solid var(--kzr-brand); border-radius: 2em; background: none; color: var(--kzr-brand); font: inherit; font-size: .75em; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .qbtn.active { background: var(--kzr-brand); color: var(--kzr-white); }
+
+  /* Parts - big touch-friendly cards */
+  .parts { display: flex; flex-direction: column; gap: .5em; }
+
+  .part {
+    background: var(--kzr-white);
+    border-radius: .75em;
+    box-shadow: 0 1px 5px rgba(0,0,0,.07);
+    overflow: hidden;
+  }
+
+  .part-head {
+    display: flex;
+    align-items: center;
+    padding: .75em 1em;
+    gap: .6em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 3.5em;
+  }
+  .part-head:active { background: var(--kzr-light); }
+
+  .part-thumb {
+    width: 3em;
+    height: 3em;
+    border-radius: .4em;
+    object-fit: cover;
+    background: var(--kzr-grey);
+    flex-shrink: 0;
+  }
+
+  .part-info { flex: 1; min-width: 0; }
+  .part-name { font-weight: 600; font-size: .95em; }
+  .part-meta { font-size: .65em; opacity: .4; margin-top: .1em; display: flex; gap: .5em; }
+
+  .part-right { display: flex; align-items: center; gap: .5em; }
+
+  .part-stock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: .7em;
+    line-height: 1.3;
+  }
+  .part-stock__total { font-weight: 700; font-size: 1.15em; }
+  .part-stock__detail { opacity: .5; }
+
+  .part-price { font-weight: 700; font-size: .85em; white-space: nowrap; }
+
+  /* Big + button for quick add */
+  .part-add {
+    width: 3em;
+    height: 3em;
+    border-radius: .5em;
+    border: 2px solid var(--kzr-brand);
+    background: none;
+    color: var(--kzr-brand);
+    font-size: 1.2em;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .part-add:active { background: var(--kzr-brand); color: var(--kzr-white); }
+
+  /* Expanded detail */
+  .part-detail { display: none; padding: .75em 1em 1em; border-top: 1px dashed rgba(255,7,7,.15); }
+  .part.is-open .part-detail { display: block; }
+
+  /* Aging pills */
+  .aging-row { display: flex; gap: .3em; margin-bottom: .6em; flex-wrap: wrap; align-items: center; }
+  .aging-label { font-size: .7em; opacity: .4; min-width: 4em; }
+  .aging-pill {
+    padding: .35em .65em;
+    border-radius: 2em;
+    border: 1.5px solid var(--kzr-brand);
+    font: inherit;
+    font-size: .7em;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    color: var(--kzr-brand);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .aging-pill.active { background: var(--kzr-brand); color: var(--kzr-white); }
+  .aging-input {
+    width: 3.5em;
+    font: inherit;
+    font-size: .75em;
+    border: 1.5px solid var(--kzr-brand);
+    border-radius: .3em;
+    padding: .3em;
+    text-align: center;
+    color: var(--kzr-brand);
+  }
+
+  /* Stocked items list */
+  .stocked { margin-top: .5em; }
+  .stocked-item {
+    display: flex;
+    align-items: center;
+    padding: .5em .6em;
+    margin-bottom: .3em;
+    background: var(--kzr-grey);
+    border-radius: .4em;
+    font-size: .8em;
+    gap: .5em;
+  }
+  .stocked-item__info { flex: 1; }
+  .stocked-item__weight { font-weight: 600; }
+  .stocked-item__status {
+    font-size: .75em;
+    padding: .15em .4em;
+    border-radius: 1em;
+    font-weight: 600;
+  }
+  .stocked-item__status--aging { background: #fef9c3; color: #a16207; }
+  .stocked-item__status--frozen { background: #dbeafe; color: #1d4ed8; }
+  .stocked-item__status--given { background: #f3e8ff; color: #7c3aed; }
+  .stocked-item__status--sold { background: #dcfce7; color: #15803d; }
+
+  /* Action buttons on stocked items */
+  .stocked-actions { display: flex; gap: .25em; }
+  .stocked-act {
+    width: 2em; height: 2em;
+    border-radius: .3em;
+    border: 1px solid var(--kzr-brand);
+    background: none;
+    color: var(--kzr-brand);
+    font-size: .7em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stocked-act:active { background: var(--kzr-brand); color: var(--kzr-white); }
+  .stocked-act--danger { border-color: #dc2626; color: #dc2626; }
+  .stocked-act--danger:active { background: #dc2626; color: white; }
+
+  /* Add form */
+  .add-form {
+    display: flex;
+    gap: .4em;
+    margin-top: .6em;
+    align-items: center;
+  }
+  .add-form input {
+    font: inherit;
+    font-size: .8em;
+    border: 1.5px solid var(--kzr-brand);
+    border-radius: .4em;
+    padding: .4em .5em;
+    color: var(--kzr-brand);
+    background: var(--kzr-white);
+  }
+  .add-form input[type=number] { width: 4.5em; }
+  .add-form input[type=text] { flex: 1; }
+  .add-form button {
+    padding: .45em .8em;
+    background: var(--kzr-brand);
+    color: var(--kzr-white);
+    border: none;
+    border-radius: .4em;
+    font: inherit;
+    font-size: .8em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Photo in detail */
+  .part-photo {
+    width: 100%;
+    border-radius: .5em;
+    margin-bottom: .6em;
+    background: var(--kzr-grey);
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+
+  /* Overlays */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.is-open { display: flex; }
+  .modal { background: var(--kzr-white); border-radius: .75em; padding: 1.25em; width: 90%; max-width: 22em; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+  .modal label { display: block; font-size: .75em; font-weight: 600; margin: .6em 0 .2em; }
+  .modal input { width: 100%; font: inherit; font-size: .9em; border: 1px solid var(--kzr-brand); border-radius: .3em; padding: .45em; color: var(--kzr-brand); }
+  .modal-save { width: 100%; margin-top: 1em; background: var(--kzr-brand); color: var(--kzr-white); border: none; border-radius: .4em; padding: .6em; font: inherit; font-weight: 600; cursor: pointer; }
+
+  .loading { text-align: center; padding: 3em; opacity: .4; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <a href="../">←</a>
+    <h1 id="title">...</h1>
+  </div>
+
+  <div class="cards">
+    <div class="card" onclick="editSection('money')">
+      <div class="card__row"><span class="card__label">Nákup</span><span class="card__val" id="v-purchase">—</span></div>
+      <div class="card__row"><span class="card__label">Prodej</span><span class="card__val" id="v-revenue">—</span></div>
+      <div class="card__row"><span class="card__label">Rozdáno</span><span class="card__val" id="v-given">—</span></div>
+      <div class="card__row"><span class="card__label">Výsledek</span><span class="card__val" id="v-profit">—</span></div>
+    </div>
+    <div class="card" onclick="editSection('weight')">
+      <div class="card__row"><span class="card__label">Živá</span><span class="card__val" id="v-live">—</span></div>
+      <div class="card__row"><span class="card__label">Mrtvá</span><span class="card__val" id="v-dead">—</span></div>
+      <div class="card__row"><span class="card__label">Rozbourané</span><span class="card__val" id="v-butchered">—</span></div>
+    </div>
+    <div class="card" onclick="editSection('dates')">
+      <div class="card__row"><span class="card__label">Porážka</span><span class="card__val card__val--small" id="v-slaughter">—</span></div>
+      <div class="card__row"><span class="card__label">Staří se</span><span class="card__val" id="v-aging-days">—</span></div>
+      <div class="card__row"><span class="card__label">Stav</span><span class="card__val card__val--small" id="v-status">—</span></div>
+    </div>
+  </div>
+
+  <div class="qfilter">
+    <button class="qbtn active" data-q="all">Vše</button>
+    <button class="qbtn" data-q="predni">Přední</button>
+    <button class="qbtn" data-q="zadni">Zadní</button>
+    <button class="qbtn" data-q="vnitrnosti">Vnitřnosti</button>
+    <button class="qbtn" data-q="ostatni">Ostatní</button>
+  </div>
+
+  <div class="parts" id="parts"><div class="loading">Načítám...</div></div>
+</div>
+
+<!-- Edit overlays -->
+<div class="overlay" id="overlay-money" onclick="if(event.target===this)this.classList.remove('is-open')">
+  <div class="modal">
+    <label>Nákupní cena (Kč)</label><input type="number" id="e-purchase">
+    <button class="modal-save" onclick="saveDrop('money')">Uložit</button>
+  </div>
+</div>
+<div class="overlay" id="overlay-weight" onclick="if(event.target===this)this.classList.remove('is-open')">
+  <div class="modal">
+    <label>Živá váha (kg)</label><input type="number" id="e-live">
+    <label>Mrtvá váha (kg)</label><input type="number" id="e-dead">
+    <label>Rozbouraná váha (kg)</label><input type="number" id="e-butchered">
+    <button class="modal-save" onclick="saveDrop('weight')">Uložit</button>
+  </div>
+</div>
+<div class="overlay" id="overlay-dates" onclick="if(event.target===this)this.classList.remove('is-open')">
+  <div class="modal">
+    <label>Datum porážky</label><input type="date" id="e-slaughter">
+    <button class="modal-save" onclick="saveDrop('dates')">Uložit</button>
+  </div>
+</div>
+
+<script>
+var dropId = new URLSearchParams(location.search).get('drop');
+var drop={}, products=[], parts=[], orders=[];
+var activeQ='all';
+
+var QM={'krk':'predni','krcni':'predni','plec':'predni','podpleci':'predni','hrud':'predni','karabacek':'predni','klizka':'predni','husic':'predni','rostenec':'predni','zebro':'predni','svickova':'zadni','kvetova':'zadni','sal':'zadni','orech':'zadni','ohanka':'zadni','pupek':'zadni','bryndacek':'zadni','flank':'zadni','oponka':'zadni','veverka':'zadni','osobuko':'zadni','valecek':'zadni','srdce':'vnitrnosti','jazyk':'vnitrnosti','licka':'vnitrnosti','mlete':'ostatni','burger':'ostatni'};
+function quarter(h){h=(h||'').toLowerCase();for(var k in QM)if(h.includes(k))return QM[k];return'ostatni';}
+function fmtDate(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('cs-CZ',{day:'numeric',month:'short',year:'numeric'});}
+function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
+
+function reserved(handle){
+  var c=0;
+  orders.forEach(function(o){if(!o.paidAt)return;(o.lines||[]).forEach(function(l){if(l.productHandle===handle)c+=(l.quantity||1);});});
+  return c;
+}
+
+function givenCount(pid){
+  return parts.filter(function(p){return p.productId===pid&&p.status==='given';}).length;
+}
+
+function givenTotal(){
+  var total=0;
+  parts.filter(function(p){return p.status==='given';}).forEach(function(p){
+    var prod=products.find(function(x){return x.id===p.productId;});
+    if(prod) total+=prod.czkPrice||0;
+  });
+  return total;
+}
+
+
+// Reference photos and videos for each cut
+var cutRef = {
+  'krk': { photo: 'https://www.topbeef.cz/img/cuts/chuck.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#chuck', en: 'Chuck/Neck' },
+  'krcni-filet': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Chuck Tender' },
+  'hrud': { photo: 'https://www.topbeef.cz/img/cuts/brisket.jpg', video: 'https://youtu.be/QQ6UlUgo7OI', topbeef: 'https://www.topbeef.cz/deleni-masa#brisket', en: 'Brisket' },
+  'vysoky-rostenec': { photo: 'https://www.topbeef.cz/img/cuts/ribeye.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#ribeye', en: 'Rib Eye' },
+  'nizky-rostenec': { photo: 'https://www.topbeef.cz/img/cuts/striploin.jpg', video: 'https://youtu.be/OwoBIcCb4ik', topbeef: 'https://www.topbeef.cz/deleni-masa#striploin', en: 'Strip Loin' },
+  'podpleci': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Chuck Eye' },
+  'plec-kulata': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Shoulder Clod' },
+  'loupana-plec': { photo: '', video: 'https://youtu.be/BJSwm0IF8mY', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Flat Iron' },
+  'velka-plec': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Blade' },
+  'karabacek': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Shank Meat' },
+  'klizka': { photo: 'https://www.topbeef.cz/img/cuts/ossobuco.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#ossobuco', en: 'Shin/Shank' },
+  'svickova': { photo: 'https://www.topbeef.cz/img/cuts/tenderloin.jpg', video: 'https://youtu.be/Z9Z9I_9d4Xg', topbeef: 'https://www.topbeef.cz/deleni-masa#tenderloin', en: 'Tenderloin' },
+  'veverka': { photo: '', video: 'https://youtu.be/Fhc-2-CMCP4', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Hanger Steak' },
+  'kvetova': { photo: 'https://www.topbeef.cz/img/cuts/rump.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#rump', en: 'Picanha/Rump Cap' },
+  'maly-orech': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Rump Steak' },
+  'velky-orech': { photo: '', video: 'https://youtu.be/cTfu1SIhhgM', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Top Round' },
+  'vrchni-sal': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Top Round Cap' },
+  'spodni-sal': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Silverside' },
+  'oponka': { photo: '', video: 'https://youtu.be/XqFvrb-KcHk', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Skirt Steak' },
+  'flank': { photo: 'https://www.topbeef.cz/img/cuts/flank.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#flank', en: 'Flank Steak' },
+  'ohanka': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Oxtail' },
+  'pupek': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Belly/Navel' },
+  'bryndacek': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Flap Steak' },
+  'nizke-zebro': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Short Rib' },
+  'vysoke-zebro': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Rib Plate' },
+  'husic': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Tri-Tip' },
+  'valecek': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Eye of Round' },
+  'osobuko': { photo: 'https://www.topbeef.cz/img/cuts/ossobuco.jpg', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa#ossobuco', en: 'Osso Buco' },
+  'licka': { photo: '', video: '', topbeef: 'https://www.topbeef.cz/deleni-masa', en: 'Cheeks' },
+  'srdce': { photo: '', video: '', topbeef: '', en: 'Heart' },
+  'jazyk': { photo: '', video: '', topbeef: '', en: 'Tongue' },
+  'mlete': { photo: '', video: '', topbeef: '', en: 'Ground Beef' }
+};
+
+// Czech bourani videos
+var bouraниVideos = {
+  zadni: 'https://www.milujuhovezi.cz/Video-zpracovani-hoveziho-masa',
+  predni: 'https://www.milujuhovezi.cz/Video-zpracovani-hoveziho-masa'
+};
+
+function getRef(handle) {
+  handle = (handle||'').toLowerCase();
+  for (var key in cutRef) {
+    if (handle.includes(key)) return cutRef[key];
+  }
+  return null;
+}
+
+
+async function load(){
+  if(!dropId)return;
+  var[dRes,oRes]=await Promise.all([fetch('/api/drops/'+dropId).then(r=>r.json()),fetch('/api/orders').then(r=>r.json())]);
+  drop=dRes.drop;products=dRes.products;parts=dRes.parts;orders=oRes;
+  updateInfo();renderParts();
+}
+
+function updateInfo(){
+  document.getElementById('title').textContent=drop.name||'Drop';
+  var purchase=drop.purchasePrice||0;
+  var revenue=products.reduce(function(s,p){return s+(p.czkPrice||0);},0);
+  var given=givenTotal();
+  var profit=revenue-given-purchase;
+
+  document.getElementById('v-purchase').textContent=purchase?purchase.toLocaleString()+',-':'?';
+  document.getElementById('v-revenue').textContent=revenue.toLocaleString()+',-';
+  document.getElementById('v-given').textContent=given?given.toLocaleString()+',-':'0';
+  var pe=document.getElementById('v-profit');
+  pe.textContent=(profit>0?'+':'')+profit.toLocaleString()+',-';
+  pe.className='card__val '+(profit>0?'card__val--green':'card__val--red');
+
+  document.getElementById('v-live').textContent=drop.totalWeight?drop.totalWeight+' kg':'?';
+  document.getElementById('v-dead').textContent=drop.deadWeight?drop.deadWeight+' kg':'?';
+  document.getElementById('v-butchered').textContent=drop.butcheredWeight?drop.butcheredWeight+' kg':'?';
+  document.getElementById('v-slaughter').textContent=fmtDate(drop.slaughterDate);
+  var days=daysSince(drop.slaughterDate);
+  document.getElementById('v-aging-days').textContent=days!==null?days:'?';
+  document.getElementById('v-status').textContent=drop.soldOutAt?'Prodáno':'Aktivní';
+}
+
+function renderParts(){
+  var c=document.getElementById('parts');
+  var filtered=products.filter(function(p){return activeQ==='all'||quarter(p.handle)===activeQ;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+
+  c.innerHTML=filtered.map(function(p){
+    var stocked=parts.filter(function(s){return s.productId===p.id;});
+    var active=stocked.filter(function(s){return!s.status||s.status==='aging';});
+    var frozen=stocked.filter(function(s){return s.status==='frozen';});
+    var givenParts=stocked.filter(function(s){return s.status==='given';});
+    var res=reserved(p.handle);
+    var free=active.length-res;if(free<0)free=0;
+
+    var agingType=p.agingType||'suché';
+    var agingMethod=p.agingMethod||'v kuse';
+    var optDays=p.optimalAgingDays||'';
+
+    var statusText=active.length===0?'0 ks':free+' voln.'+(res?' · '+res+' rez.':'');
+    if(frozen.length)statusText+=' · '+frozen.length+' zmraz.';
+    if(givenParts.length)statusText+=' · '+givenParts.length+' rozdáno';
+
+    var stockedHtml=stocked.map(function(s){
+      var statusLabel={'aging':'Zraje','frozen':'Zmrazeno','given':'Rozdáno','sold':'Prodáno'};
+      var statusCls={'aging':'aging','frozen':'frozen','given':'given','sold':'sold'};
+      var st=s.status||'aging';
+      return '<div class="stocked-item">'+
+        '<div class="stocked-item__info">'+
+          '<span class="stocked-item__weight">'+(s.weight?s.weight+' kg':'—')+'</span>'+
+          (s.notes?' <span style="opacity:.5">'+s.notes+'</span>':'')+
+        '</div>'+
+        '<span class="stocked-item__status stocked-item__status--'+statusCls[st]+'">'+(statusLabel[st]||st)+'</span>'+
+        '<div class="stocked-actions">'+
+          (st==='aging'?'<button class="stocked-act" title="Zmrazit" onclick="event.stopPropagation();setPartStatus(\''+s.id+'\',\'frozen\')">❄</button>':'') +
+          (st==='aging'?'<button class="stocked-act" title="Rozdat" onclick="event.stopPropagation();setPartStatus(\''+s.id+'\',\'given\')">🎁</button>':'') +
+          (st!=='aging'?'<button class="stocked-act" title="Zpět na zrání" onclick="event.stopPropagation();setPartStatus(\''+s.id+'\',\'aging\')">↩</button>':'') +
+          '<button class="stocked-act stocked-act--danger" title="Smazat" onclick="event.stopPropagation();rmPart(\''+s.id+'\')">✕</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    return '<div class="part" data-pid="'+p.id+'">'+
+      '<div class="part-head" onclick="this.parentElement.classList.toggle(\'is-open\')">'+
+        '<div class="part-info">'+
+          '<div class="part-name">'+p.name+'</div>'+
+          '<div class="part-meta">'+
+            '<span>'+p.czkPrice+',-</span>'+
+            '<span>'+(p.weight||'')+'</span>'+
+            '<span>'+(optDays?optDays+'d ':'')+agingType+'</span>'+
+          '</div>'+
+        '</div>'+
+        '<div class="part-stock">'+
+          '<span class="part-stock__total">'+active.length+' ks</span>'+
+          '<span class="part-stock__detail">'+statusText+'</span>'+
+        '</div>'+
+        '<button class="part-add" onclick="event.stopPropagation();quickAdd(\''+p.id+'\',\''+p.name.replace(/'/g,"\\'")+'\')">+</button>'+
+      '</div>'+
+      '<div class="part-detail">'+
+        '<div class="aging-row">'+
+          '<span class="aging-label">Zrání</span>'+
+          '<button class="aging-pill '+(agingType==='suché'?'active':'')+'" onclick="event.stopPropagation();setAging(\''+p.id+'\',\'agingType\',\'suché\')">Suché</button>'+
+          '<button class="aging-pill '+(agingType==='mokré'?'active':'')+'" onclick="event.stopPropagation();setAging(\''+p.id+'\',\'agingType\',\'mokré\')">Mokré</button>'+
+        '</div>'+
+        '<div class="aging-row">'+
+          '<span class="aging-label">Způsob</span>'+
+          '<button class="aging-pill '+(agingMethod==='v kuse'?'active':'')+'" onclick="event.stopPropagation();setAging(\''+p.id+'\',\'agingMethod\',\'v kuse\')">V kuse</button>'+
+          '<button class="aging-pill '+(agingMethod==='zvlášť'?'active':'')+'" onclick="event.stopPropagation();setAging(\''+p.id+'\',\'agingMethod\',\'zvlášť\')">Zvlášť</button>'+
+        '</div>'+
+        '<div class="aging-row">'+
+          '<span class="aging-label">Optim.</span>'+
+          '<input type="number" class="aging-input" value="'+(optDays||'')+'" placeholder="dní" onchange="event.stopPropagation();setAging(\''+p.id+'\',\'optimalAgingDays\',parseInt(this.value)||0)">'+
+          '<span style="font-size:.7em;opacity:.4">dní</span>'+
+        '</div>'+
+        '<div style="margin-bottom:.6em">'+(function(){
+          var ref=getRef(p.handle);
+          if(!ref)return'';
+          var links='';
+          if(ref.topbeef)links+='<a href="'+ref.topbeef+'" target="_blank" style="font-size:.7em;margin-right:.75em;text-decoration:underline">📷 Fotka kusu</a>';
+          if(ref.video)links+='<a href="'+ref.video+'" target="_blank" style="font-size:.7em;margin-right:.75em;text-decoration:underline">🎬 Video bourání</a>';
+          links+='<a href="https://www.milujuhovezi.cz/Video-zpracovani-hoveziho-masa" target="_blank" style="font-size:.7em;text-decoration:underline">🇨🇿 Bourání CZ</a>';
+          if(ref.en)links+='<span style="font-size:.6em;opacity:.4;margin-left:.5em">('+ref.en+')</span>';
+          return links;
+        })()+'</div>'+
+        '<div class="stocked">'+stockedHtml+'</div>'+
+        '<div class="add-form">'+
+          '<input type="number" step="0.1" placeholder="kg" id="w-'+p.id+'">'+
+          '<input type="text" placeholder="poznámka" id="n-'+p.id+'">'+
+          '<button onclick="event.stopPropagation();addPart(\''+p.id+'\',\''+p.name.replace(/'/g,"\\'")+'\')">Přidat</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+async function quickAdd(pid,pname){
+  var res=await fetch('/api/drops/'+dropId+'/parts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:pid,productName:pname,weight:0,status:'aging'})});
+  var p=await res.json();parts.push(p);renderParts();updateInfo();
+}
+
+async function addPart(pid,pname){
+  var w=parseFloat(document.getElementById('w-'+pid).value)||0;
+  var n=document.getElementById('n-'+pid).value||'';
+  var res=await fetch('/api/drops/'+dropId+'/parts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:pid,productName:pname,weight:w,notes:n,status:'aging'})});
+  var p=await res.json();parts.push(p);renderParts();updateInfo();
+}
+
+async function rmPart(partId){
+  await fetch('/api/drops/'+dropId+'/parts/'+partId,{method:'DELETE'});
+  parts=parts.filter(function(p){return p.id!==partId;});
+  renderParts();updateInfo();
+}
+
+async function setPartStatus(partId,status){
+  await fetch('/api/drops/'+dropId+'/parts/'+partId+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})});
+  var p=parts.find(function(x){return x.id===partId;});
+  if(p)p.status=status;
+  renderParts();updateInfo();
+}
+
+async function setAging(pid,field,value){
+  var p=products.find(function(x){return x.id===pid;});
+  if(p)p[field]=value;
+  await fetch('/api/products/'+pid,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[field]:value})});
+  renderParts();
+}
+
+function editSection(section){
+  if(section==='money')document.getElementById('e-purchase').value=drop.purchasePrice||'';
+  if(section==='weight'){document.getElementById('e-live').value=drop.totalWeight||'';document.getElementById('e-dead').value=drop.deadWeight||'';document.getElementById('e-butchered').value=drop.butcheredWeight||'';}
+  if(section==='dates')document.getElementById('e-slaughter').value=drop.slaughterDate||'';
+  document.getElementById('overlay-'+section).classList.add('is-open');
+}
+
+async function saveDrop(section){
+  var u={};
+  if(section==='money')u.purchasePrice=parseInt(document.getElementById('e-purchase').value)||0;
+  if(section==='weight'){u.totalWeight=parseInt(document.getElementById('e-live').value)||0;u.deadWeight=parseInt(document.getElementById('e-dead').value)||0;u.butcheredWeight=parseInt(document.getElementById('e-butchered').value)||0;}
+  if(section==='dates')u.slaughterDate=document.getElementById('e-slaughter').value||'';
+  await fetch('/api/drops/'+dropId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(u)});
+  Object.assign(drop,u);updateInfo();
+  document.getElementById('overlay-'+section).classList.remove('is-open');
+}
+
+document.querySelectorAll('.qbtn').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});b.classList.add('active');activeQ=b.getAttribute('data-q');renderParts();});});
+
+load();
+</script>
+</body>
+</html>
