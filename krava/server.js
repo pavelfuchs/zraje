@@ -124,13 +124,15 @@ app.post('/api/drops/:id', async (req, res) => {
 app.post('/api/drops/:id/parts', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'No DB' });
   try {
-    const { productId, productName, weight, quarter, notes } = req.body;
+    const { productId, productName, weight, quarter, notes, labelDesc, status } = req.body;
     const part = {
       productId: productId || '',
       productName: productName || '',
       weight: weight || 0,
       quarter: quarter || '',
       notes: notes || '',
+      labelDesc: labelDesc || '',
+      status: status || 'aging',
       stockedAt: new Date().toISOString()
     };
     const ref = await db.collection('drops').doc(req.params.id).collection('parts').add(part);
@@ -158,6 +160,19 @@ app.post('/api/drops/:id/parts/:partId/status', async (req, res) => {
   }
 });
 
+// API: update stocked part weight
+app.post('/api/drops/:id/parts/:partId/weight', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'No DB' });
+  try {
+    await db.collection('drops').doc(req.params.id).collection('parts').doc(req.params.partId).update({
+      weight: req.body.weight || 0
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: delete a stocked part
 app.delete('/api/drops/:id/parts/:partId', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'No DB' });
@@ -173,7 +188,7 @@ app.delete('/api/drops/:id/parts/:partId', async (req, res) => {
 app.post('/api/products/:id', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'No DB' });
   try {
-    const allowed = ['agingType', 'agingMethod', 'optimalAgingDays', 'czkPrice', 'weight'];
+    const allowed = ['agingType', 'agingMethod', 'optimalAgingDays', 'czkPrice', 'weight', 'labelDescription'];
     const update = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
@@ -249,6 +264,120 @@ app.post('/api/orders/:id/status', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// API: list all contacts (customers + subscribers merged)
+app.get('/api/contacts', async (req, res) => {
+  if (!db) return res.json([]);
+  try {
+    const contacts = new Map();
+
+    // Customers from orders
+    const ordersSnap = await db.collection('orders').get();
+    ordersSnap.docs.forEach(doc => {
+      const o = doc.data();
+      if (!o.email) return;
+      const key = o.email.toLowerCase();
+      if (!contacts.has(key)) {
+        contacts.set(key, { email: o.email, tel: o.tel || '', name: o.fullName || '', source: 'order', orderCount: 0, totalSpent: 0, subscribedAt: null, unsubscribedAt: null });
+      }
+      const c = contacts.get(key);
+      c.orderCount++;
+      c.totalSpent += (o.lines || []).reduce((s, l) => s + (l.czkPrice || 0) * (l.quantity || 1), 0);
+      if (!c.name && o.fullName) c.name = o.fullName;
+      if (!c.tel && o.tel) c.tel = o.tel;
+    });
+
+    // Subscribers
+    const subsSnap = await db.collection('subscribers').get();
+    subsSnap.docs.forEach(doc => {
+      const s = doc.data();
+      const contact = s.contact || '';
+      const isEmail = contact.includes('@');
+      const key = isEmail ? contact.toLowerCase() : 'tel:' + contact;
+      if (!contacts.has(key)) {
+        contacts.set(key, { email: isEmail ? contact : '', tel: isEmail ? '' : contact, name: '', source: 'subscriber', orderCount: 0, totalSpent: 0, subscribedAt: s.createdAt, unsubscribedAt: s.unsubscribedAt || null });
+      } else {
+        contacts.get(key).subscribedAt = s.createdAt;
+        if (s.unsubscribedAt) contacts.get(key).unsubscribedAt = s.unsubscribedAt;
+      }
+    });
+
+    res.json(Array.from(contacts.values()).sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0)));
+  } catch (err) {
+    console.error('Contacts error:', err.message);
+    res.json([]);
+  }
+});
+
+// API: send bulk message
+app.post('/api/contacts/send', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'No DB' });
+  try {
+    const { subject, message, recipients } = req.body;
+    if (!subject || !message || !recipients || !recipients.length) {
+      return res.status(400).json({ error: 'Missing subject, message or recipients' });
+    }
+
+    const results = { sent: 0, failed: 0, errors: [] };
+
+    for (const email of recipients) {
+      if (!email || !email.includes('@')) continue;
+      const unsubUrl = 'https://kravazraje.cz/odhlasit?email=' + encodeURIComponent(email);
+      const { error } = await resend.emails.send({
+        from: 'Kráva z ráje <info@kravazraje.cz>',
+        to: email,
+        subject: subject,
+        html: message.replace(/\n/g, '<br>') +
+          '<br><br><hr style="border:none;border-top:1px solid #eee;margin:2em 0 1em">' +
+          '<p style="font-size:12px;color:#999">Nechcete dostávat zprávy? <a href="' + unsubUrl + '">Odhlásit se</a></p>'
+      });
+      if (error) {
+        results.failed++;
+        results.errors.push(email + ': ' + error.message);
+      } else {
+        results.sent++;
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Unsubscribe page
+app.get('/odhlasit', async (req, res) => {
+  const email = req.query.email;
+  if (!email) return res.send('<h2>Chybí email</h2>');
+  if (db) {
+    try {
+      const snap = await db.collection('subscribers').where('contact', '==', email).get();
+      snap.docs.forEach(doc => doc.ref.update({ unsubscribedAt: new Date().toISOString() }));
+      // Also mark in a dedicated unsubscribe collection
+      await db.collection('unsubscribed').doc(email.toLowerCase().replace(/[^a-z0-9]/g, '_')).set({
+        email: email,
+        unsubscribedAt: new Date().toISOString()
+      });
+    } catch (e) { console.error('Unsubscribe error:', e.message); }
+  }
+  res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Odhlášeno</title></head><body style="font-family:sans-serif;text-align:center;padding:3em;color:#ff0707"><h2>Odhlášeno</h2><p>Váš email <strong>' + email + '</strong> byl odhlášen z odběru.</p><p><a href="/" style="color:#ff0707">Zpět na kravazraje.cz</a></p></body></html>');
+});
+
+// API: subscribe (email/phone for notifications)
+app.post('/api/subscribe', async (req, res) => {
+  if (!db) return res.json({ ok: true });
+  try {
+    const { contact } = req.body;
+    if (!contact) return res.status(400).json({ error: 'Missing contact' });
+    await db.collection('subscribers').add({
+      contact,
+      createdAt: new Date().toISOString()
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: true }); // don't fail visibly
   }
 });
 

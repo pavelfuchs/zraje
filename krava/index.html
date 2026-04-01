@@ -14,6 +14,21 @@
 .Shop_Lead__OQZtD { padding: 0; }
 .Shop_Main__7VQk9 { padding-top: 0.5em; }
 .Pill_Container__lSB2y { font-size: 1em; }
+
+/* Welcome modal */
+.welcome-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 500; align-items: center; justify-content: center; }
+.welcome-overlay.is-open { display: flex; }
+.welcome-box { background: #fff; border-radius: .75em; padding: 2em 1.5em; width: 90%; max-width: 24em; box-shadow: 0 8px 30px rgba(0,0,0,.2); text-align: center; position: relative; }
+.welcome-box h2 { font-family: var(--font-germaniaone); font-size: 1.4em; font-weight: 400; margin: 0 0 .75em; color: var(--kzr-brand); }
+.welcome-box p { font-size: .9em; line-height: 1.5; margin: 0 0 1.25em; color: var(--kzr-brand); }
+.welcome-box input { width: 100%; font: inherit; font-size: 1em; border: 2px solid var(--kzr-brand); border-radius: .4em; padding: .6em .75em; color: var(--kzr-brand); margin-bottom: .5em; text-align: center; }
+.welcome-box input::placeholder { opacity: .35; }
+.welcome-box button { width: 100%; padding: .7em; background: var(--kzr-brand); color: #fff; border: none; border-radius: .4em; font: inherit; font-size: 1em; font-weight: 600; cursor: pointer; }
+.welcome-box button:active { opacity: .8; }
+.welcome-box .welcome-skip { display: block; margin-top: .75em; font-size: .75em; opacity: .4; cursor: pointer; background: none; border: none; color: var(--kzr-brand); font: inherit; font-size: .75em; width: auto; padding: 0; }
+.welcome-box .welcome-skip:hover { opacity: .7; }
+.welcome-ok { display: none; }
+.welcome-ok.is-visible { display: block; }
 </style>
 </head>
 <body>
@@ -1157,6 +1172,23 @@
     </button>
   </div>
 
+  <!-- Welcome modal -->
+  <div class="welcome-overlay" id="welcome-modal">
+    <div class="welcome-box">
+      <h2>kráva z ráje</h2>
+      <p>Chcete dostat čerstvé info, až porazím krávu a půjde objednat? Nechte mi tu mail nebo telefon a dám vědět.</p>
+      <div id="welcome-form">
+        <input type="text" id="welcome-contact" placeholder="email nebo telefon" autocomplete="email">
+        <button onclick="submitWelcome()">Dát vědět</button>
+        <button class="welcome-skip" onclick="closeWelcome()">Teď ne, díky</button>
+      </div>
+      <div class="welcome-ok" id="welcome-ok">
+        <p style="font-weight:600;font-size:1.1em;margin-top:.5em">Díky! Ozvu se.</p>
+        <button class="welcome-skip" onclick="closeWelcome()" style="margin-top:.5em">Zavřít</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Checkout Panel -->
   <div id="checkout-panel" style="display:none;position:fixed;bottom:.5em;left:.5em;right:.5em;z-index:30;max-width:22em;margin-left:auto">
     <style>
@@ -1593,6 +1625,31 @@ document.querySelectorAll('.Pill_Container__lSB2y').forEach(function(pill) {
     filterProducts();
   });
 });
+
+// Welcome modal — show once per visitor
+if (!localStorage.getItem('kzr-welcomed')) {
+  setTimeout(function() {
+    document.getElementById('welcome-modal').classList.add('is-open');
+  }, 1500);
+}
+
+function closeWelcome() {
+  document.getElementById('welcome-modal').classList.remove('is-open');
+  localStorage.setItem('kzr-welcomed', '1');
+}
+
+function submitWelcome() {
+  var contact = document.getElementById('welcome-contact').value.trim();
+  if (!contact) { document.getElementById('welcome-contact').focus(); return; }
+  fetch('/api/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contact: contact })
+  });
+  document.getElementById('welcome-form').style.display = 'none';
+  document.getElementById('welcome-ok').classList.add('is-visible');
+  localStorage.setItem('kzr-welcomed', '1');
+}
 
 </script>
 </body>

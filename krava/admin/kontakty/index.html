@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kontakty — Zraje</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+  body { background: var(--kzr-white); color: var(--kzr-brand); min-height: 100vh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .page { max-width: 50em; margin: 0 auto; padding: 1em; }
+  .header { display: flex; align-items: center; gap: .75em; margin-bottom: 1em; }
+  .header a { text-decoration: none; font-size: 1.5em; }
+  .header h1 { font-family: var(--font-germaniaone); font-size: 1.3em; font-weight: 400; }
+
+  .stats { display: flex; gap: .75em; margin-bottom: 1em; flex-wrap: wrap; }
+  .stat { background: var(--kzr-grey); border-radius: .5em; padding: .6em .85em; flex: 1; min-width: 6em; }
+  .stat__val { font-size: 1.4em; font-weight: 700; display: block; }
+  .stat__label { font-size: .65em; opacity: .5; }
+
+  .actions { display: flex; gap: .5em; margin-bottom: 1em; flex-wrap: wrap; }
+  .action-btn { padding: .5em 1em; background: var(--kzr-brand); color: var(--kzr-white); border: none; border-radius: .4em; font: inherit; font-size: .85em; font-weight: 600; cursor: pointer; }
+  .action-btn:active { opacity: .7; }
+  .action-btn--outline { background: none; color: var(--kzr-brand); border: 1.5px solid var(--kzr-brand); }
+
+  .search { display: flex; align-items: center; background: var(--kzr-grey); border-radius: .5em; padding: .5em 1em; margin-bottom: .75em; }
+  .search input { flex: 1; background: none; border: none; font: inherit; color: inherit; outline: none; }
+  .search input::placeholder { opacity: .4; }
+
+  .filters { display: flex; gap: .4em; margin-bottom: 1em; flex-wrap: wrap; }
+  .fbtn { padding: .3em .7em; border: 1.5px solid var(--kzr-brand); border-radius: 2em; background: none; color: var(--kzr-brand); font: inherit; font-size: .75em; font-weight: 600; cursor: pointer; }
+  .fbtn.active { background: var(--kzr-brand); color: var(--kzr-white); }
+
+  .contacts { display: flex; flex-direction: column; gap: .35em; }
+  .contact { display: flex; align-items: center; padding: .6em .75em; background: var(--kzr-white); border-radius: .5em; box-shadow: 0 1px 4px rgba(0,0,0,.06); gap: .6em; }
+  .contact-check { width: 1.4em; height: 1.4em; accent-color: var(--kzr-brand); cursor: pointer; flex-shrink: 0; }
+  .contact-info { flex: 1; min-width: 0; }
+  .contact-name { font-weight: 600; font-size: .85em; }
+  .contact-email { font-size: .7em; opacity: .5; }
+  .contact-badges { display: flex; gap: .25em; flex-wrap: wrap; }
+  .cbadge { font-size: .6em; font-weight: 600; padding: .15em .4em; border-radius: 1em; }
+  .cbadge--order { background: #dcfce7; color: #15803d; }
+  .cbadge--sub { background: #dbeafe; color: #1d4ed8; }
+  .cbadge--unsub { background: #fee2e2; color: #b91c1c; }
+  .contact-stats { text-align: right; font-size: .7em; opacity: .5; }
+
+  /* Send modal */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.is-open { display: flex; }
+  .modal { background: var(--kzr-white); border-radius: .75em; padding: 1.5em; width: 92%; max-width: 28em; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+  .modal h2 { font-size: 1.1em; font-weight: 700; margin: 0 0 .75em; }
+  .modal label { display: block; font-size: .75em; font-weight: 600; margin: .5em 0 .2em; }
+  .modal input, .modal textarea { width: 100%; font: inherit; font-size: .9em; border: 1.5px solid var(--kzr-brand); border-radius: .4em; padding: .5em; color: var(--kzr-brand); }
+  .modal textarea { min-height: 8em; resize: vertical; }
+  .modal-actions { display: flex; gap: .5em; margin-top: 1em; }
+  .modal-actions button { flex: 1; padding: .6em; border-radius: .4em; font: inherit; font-weight: 600; cursor: pointer; }
+  .modal-send { background: var(--kzr-brand); color: var(--kzr-white); border: none; }
+  .modal-cancel { background: none; color: var(--kzr-brand); border: 1.5px solid var(--kzr-brand); }
+  .modal-count { font-size: .75em; opacity: .5; margin-top: .5em; }
+
+  .loading { text-align: center; padding: 3em; opacity: .4; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header"><a href="../">←</a><h1>kontakty</h1></div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat__val" id="s-total">—</span><span class="stat__label">celkem</span></div>
+    <div class="stat"><span class="stat__val" id="s-email">—</span><span class="stat__label">s emailem</span></div>
+    <div class="stat"><span class="stat__val" id="s-orders">—</span><span class="stat__label">objednali</span></div>
+    <div class="stat"><span class="stat__val" id="s-subs">—</span><span class="stat__label">odběr</span></div>
+  </div>
+
+  <div class="actions">
+    <button class="action-btn" onclick="openSend()">Poslat zprávu</button>
+    <button class="action-btn--outline action-btn" onclick="selectAll()">Vybrat vše</button>
+    <button class="action-btn--outline action-btn" onclick="selectNone()">Zrušit výběr</button>
+  </div>
+
+  <div class="search"><input type="text" id="search" placeholder="Hledat jméno, email, telefon..."></div>
+
+  <div class="filters">
+    <button class="fbtn active" data-f="all">Vše</button>
+    <button class="fbtn" data-f="orders">Objednali</button>
+    <button class="fbtn" data-f="subs">Odběratelé</button>
+    <button class="fbtn" data-f="unsub">Odhlášení</button>
+  </div>
+
+  <div class="contacts" id="contacts"><div class="loading">Načítám...</div></div>
+</div>
+
+<!-- Send modal -->
+<div class="overlay" id="send-modal" onclick="if(event.target===this)this.classList.remove('is-open')">
+  <div class="modal">
+    <h2>Poslat zprávu</h2>
+    <div class="modal-count" id="send-count"></div>
+    <label>Předmět</label>
+    <input type="text" id="send-subject" placeholder="Nová kráva je tu!">
+    <label>Zpráva</label>
+    <textarea id="send-message" placeholder="Ahoj, právě jsme porazili novou krávu..."></textarea>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="document.getElementById('send-modal').classList.remove('is-open')">Zrušit</button>
+      <button class="modal-send" onclick="sendBulk()">Odeslat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var allContacts = [];
+var activeFilter = 'all';
+
+function render(contacts) {
+  var c = document.getElementById('contacts');
+  if (!contacts.length) { c.innerHTML = '<div class="loading">Žádné kontakty</div>'; return; }
+  c.innerHTML = contacts.map(function(ct, i) {
+    var badges = '';
+    if (ct.orderCount) badges += '<span class="cbadge cbadge--order">' + ct.orderCount + '× objednal</span>';
+    if (ct.subscribedAt) badges += '<span class="cbadge cbadge--sub">odběr</span>';
+    if (ct.unsubscribedAt) badges += '<span class="cbadge cbadge--unsub">odhlášen</span>';
+    var emailDisplay = ct.email || ct.tel || '—';
+    return '<div class="contact">' +
+      '<input type="checkbox" class="contact-check" data-email="' + (ct.email || '') + '" data-tel="' + (ct.tel || '') + '">' +
+      '<div class="contact-info">' +
+        '<div class="contact-name">' + (ct.name || emailDisplay) + '</div>' +
+        '<div class="contact-email">' + (ct.email ? ct.email : '') + (ct.email && ct.tel ? ' · ' : '') + (ct.tel ? ct.tel : '') + '</div>' +
+        '<div class="contact-badges">' + badges + '</div>' +
+      '</div>' +
+      (ct.totalSpent ? '<div class="contact-stats">' + ct.totalSpent.toLocaleString() + ',-</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function filterAndRender() {
+  var q = document.getElementById('search').value.toLowerCase();
+  var filtered = allContacts;
+  if (activeFilter === 'orders') filtered = filtered.filter(function(c) { return c.orderCount > 0; });
+  if (activeFilter === 'subs') filtered = filtered.filter(function(c) { return c.subscribedAt && !c.unsubscribedAt; });
+  if (activeFilter === 'unsub') filtered = filtered.filter(function(c) { return !!c.unsubscribedAt; });
+  if (q) filtered = filtered.filter(function(c) { return [c.name, c.email, c.tel].join(' ').toLowerCase().includes(q); });
+  render(filtered);
+}
+
+function updateStats() {
+  document.getElementById('s-total').textContent = allContacts.length;
+  document.getElementById('s-email').textContent = allContacts.filter(function(c) { return c.email; }).length;
+  document.getElementById('s-orders').textContent = allContacts.filter(function(c) { return c.orderCount > 0; }).length;
+  document.getElementById('s-subs').textContent = allContacts.filter(function(c) { return c.subscribedAt && !c.unsubscribedAt; }).length;
+}
+
+function selectAll() {
+  document.querySelectorAll('.contact-check').forEach(function(cb) { cb.checked = true; });
+}
+function selectNone() {
+  document.querySelectorAll('.contact-check').forEach(function(cb) { cb.checked = false; });
+}
+
+function getSelected() {
+  var emails = [];
+  document.querySelectorAll('.contact-check:checked').forEach(function(cb) {
+    var e = cb.getAttribute('data-email');
+    if (e) emails.push(e);
+  });
+  return emails;
+}
+
+function openSend() {
+  var selected = getSelected();
+  if (!selected.length) {
+    // Select all with email if nothing selected
+    document.querySelectorAll('.contact-check').forEach(function(cb) {
+      if (cb.getAttribute('data-email')) cb.checked = true;
+    });
+    selected = getSelected();
+  }
+  document.getElementById('send-count').textContent = selected.length + ' příjemců s emailem';
+  document.getElementById('send-modal').classList.add('is-open');
+}
+
+async function sendBulk() {
+  var subject = document.getElementById('send-subject').value.trim();
+  var message = document.getElementById('send-message').value.trim();
+  var recipients = getSelected();
+  if (!subject || !message) { alert('Vyplň předmět a zprávu'); return; }
+  if (!recipients.length) { alert('Žádní příjemci'); return; }
+
+  var btn = document.querySelector('.modal-send');
+  btn.textContent = 'Odesílám...';
+  btn.disabled = true;
+
+  try {
+    var res = await fetch('/api/contacts/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: subject, message: message, recipients: recipients })
+    });
+    var data = await res.json();
+    alert('Odesláno: ' + data.sent + (data.failed ? ', chyby: ' + data.failed : ''));
+    document.getElementById('send-modal').classList.remove('is-open');
+  } catch (err) {
+    alert('Chyba: ' + err.message);
+  }
+  btn.textContent = 'Odeslat';
+  btn.disabled = false;
+}
+
+// Init
+fetch('/api/contacts')
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    allContacts = data;
+    updateStats();
+    filterAndRender();
+  });
+
+document.getElementById('search').addEventListener('input', filterAndRender);
+document.querySelectorAll('.fbtn').forEach(function(b) {
+  b.addEventListener('click', function() {
+    document.querySelectorAll('.fbtn').forEach(function(x) { x.classList.remove('active'); });
+    b.classList.add('active');
+    activeFilter = b.getAttribute('data-f');
+    filterAndRender();
+  });
+});
+</script>
+</body>
+</html>
